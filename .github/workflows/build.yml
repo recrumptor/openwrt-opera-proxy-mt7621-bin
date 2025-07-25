@@ -16,8 +16,9 @@ jobs:
     - name: Download SDK
       run: |
         wget https://downloads.openwrt.org/releases/24.10.2/targets/ramips/mt7621/openwrt-sdk-24.10.2-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst
-        tar --use-compress-program=unzstd -xf openwrt-sdk-24.10.2-ramips-mt7621_*.tar.zst
-        mv openwrt-sdk-24.10.2-ramips-mt7621* sdk
+        tar --use-compress-program=unzstd -xf openwrt-sdk-24.10.2-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+        SDK_DIR=$(find . -maxdepth 1 -type d -name "openwrt-sdk-24.10.2-*" | head -n1)
+        mv "$SDK_DIR" sdk
 
     - name: Add opera-proxy package
       run: |
