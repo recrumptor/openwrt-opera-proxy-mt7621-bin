@@ -23,11 +23,11 @@ define Build/Compile
 endef
 
 define Package/$(PKG_NAME)/install
-    $(INSTALL_DIR) $(1)/etc/init.d
-    $(INSTALL_BIN) ./files/etc/init.d/opera-proxy $(1)/etc/init.d/
+	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_BIN) ./files/etc/init.d/opera-proxy $(1)/etc/init.d/
 
-    $(INSTALL_DIR) $(1)/usr/bin
-    $(INSTALL_BIN) ./files/usr/bin/opera-proxy $(1)/usr/bin/
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_BIN) ./files/usr/bin/opera-proxy $(1)/usr/bin/
 endef
 
 $(eval $(call BuildPackage,opera-proxy))
