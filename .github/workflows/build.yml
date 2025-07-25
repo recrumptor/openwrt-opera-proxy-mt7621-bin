@@ -30,6 +30,7 @@ jobs:
     - name: Build .ipk
       run: |
         cd sdk
+        make defconfig
         make package/opera-proxy/compile V=s -j$(nproc)
 
     - name: Upload .ipk
