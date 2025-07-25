@@ -23,6 +23,7 @@ jobs:
     - name: Add opera-proxy package
       run: |
         cp -r opera-proxy sdk/package/opera-proxy
+        chmod +x sdk/package/opera-proxy/update.sh
         cd sdk/package/opera-proxy
         ./update.sh
 
