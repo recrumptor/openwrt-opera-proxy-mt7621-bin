@@ -13,39 +13,25 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Install dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y build-essential clang flex bison g++ gawk \
-          gcc-multilib git libncurses-dev libssl-dev python3-distutils \
-          unzip zlib1g-dev file wget python3
-
-    - name: Download OpenWrt SDK
+    - name: Download SDK
       run: |
         wget https://downloads.openwrt.org/releases/24.10.2/targets/ramips/mt7621/openwrt-sdk-24.10.2-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst
         tar --use-compress-program=unzstd -xf openwrt-sdk-24.10.2-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst
         SDK_DIR=$(find . -maxdepth 1 -type d -name "openwrt-sdk-24.10.2-*" | head -n1)
         mv "$SDK_DIR" sdk
-
     - name: Add opera-proxy package
       run: |
-        cp -r package/opera-proxy sdk/package/
+        cp -r opera-proxy sdk/package/opera-proxy
         chmod +x sdk/package/opera-proxy/update.sh
-        chmod +x sdk/package/opera-proxy/files/etc/init.d/opera-proxy
         cd sdk/package/opera-proxy
         ./update.sh
-
-    - name: Build opera-proxy
+    - name: Build .ipk
       run: |
         cd sdk
-        ./scripts/feeds update -a
-        ./scripts/feeds install -a
-        echo "CONFIG_PACKAGE_opera-proxy=y" >> .config
         make defconfig
         make package/opera-proxy/compile V=s -j$(nproc)
-
-    - name: Upload .ipk artifact
+    - name: Upload .ipk
       uses: actions/upload-artifact@v4
       with:
         name: opera-proxy
-        path: sdk/bin/packages/*/base/opera-proxy_*.ipk
+        path: sdk/bin/packages/mipsel_24kc/base/opera-proxy_*.ipk
