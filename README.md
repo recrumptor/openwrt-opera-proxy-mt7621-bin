@@ -19,12 +19,14 @@ config instance 'default'
 
 config instance 'Americas'
   option enabled '1'
-  option args '--bind-address 127.0.0.1:18082 --country AM --socks-mode'
+  option args '--bind-address 127.0.0.1:18082 -country AM -socks-mode'
 
 config instance 'Asia'
   option enabled '1'
-  option args '--bind-address 127.0.0.1:18083 --country AS --socks-mode'
+  option args '--bind-address 127.0.0.1:18083 -country AS -socks-mode'
 ```
+Создаст один http и два socks прокси сервера
+
   Подробнее можно прочитать на странице источника https://github.com/Snawoot/opera-proxy
 
   📚 Источник
