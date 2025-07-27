@@ -30,16 +30,7 @@ jobs:
         cd sdk
         make defconfig
         make package/opera-proxy/compile V=s -j$(nproc)
-    - name: Strip and compare binary size
-      run: |
-        BIN=sdk/package/opera-proxy/files/usr/bin/opera-proxy
-        echo "Before strip:"
-        ls -lh "$BIN"
-        strip "$BIN"
-        echo "After strip:"
-        ls -lh "$BIN"
-
-
+    
     - name: Upload .ipk
       uses: actions/upload-artifact@v4
       with:
