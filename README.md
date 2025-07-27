@@ -27,7 +27,7 @@ config instance 'Asia'
 ```
 Создаст один http и два socks прокси сервера
 
-  Подробнее можно прочитать на странице источника https://github.com/Snawoot/opera-proxy
+  Подробнее можно прочитать на странице https://github.com/Snawoot/opera-proxy
 
   📚 Источник
 Исходный код клиента: [Snawoot/opera-proxy](https://github.com/Snawoot/opera-proxy)
