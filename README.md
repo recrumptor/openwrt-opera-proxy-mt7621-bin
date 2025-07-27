@@ -12,7 +12,7 @@
 Файл конфигурации: /etc/config/opera-proxy Скрипт запуска: /etc/init.d/opera-proxy
 
 Пример конфигурации:
-
+```
 config instance 'default'
   option enabled '1'
   option args '--bind-address 127.0.0.1:18081'
@@ -24,7 +24,7 @@ config instance 'Americas'
 config instance 'Asia'
   option enabled '1'
   option args '--bind-address 127.0.0.1:18083 --country AS --socks-mode'
-
+```
   Подробнее можно прочитать на странице источника https://github.com/Snawoot/opera-proxy
 
   📚 Источник
