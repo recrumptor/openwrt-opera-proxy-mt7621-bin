@@ -1,4 +1,4 @@
-# penwrt-opera-proxy-mt7621-bin
+# Openwrt-opera-proxy-mt7621-bin
 🧭 OpenWrt Opera Proxy — MT7621 Binary Package
 Этот репозиторий содержит готовый .ipk-пакет клиента Opera Proxy для OpenWrt на архитектуре mipsel_24kc (MT7621). 
 
