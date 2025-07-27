@@ -30,6 +30,11 @@ jobs:
         cd sdk
         make defconfig
         make package/opera-proxy/compile V=s -j$(nproc)
+    - name: Strip binary
+      run: |
+        BIN=$(find sdk/build_dir/target-*/opera-proxy-*/opera-proxy -type f | head -n1)
+        strip "$BIN"
+
     - name: Upload .ipk
       uses: actions/upload-artifact@v4
       with:
