@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=opera-proxy
-PKG_VERSION:=1.13.1
+PKG_VERSION:=1.14.0
 PKG_RELEASE:=1
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=Snawoot <vladislav-ex-gh@vm-0.com>
