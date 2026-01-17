@@ -6,7 +6,36 @@ on:
   workflow_dispatch:
 
 jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      exists: ${{ steps.check.outputs.exists }}
+      ver: ${{ steps.get_ver.outputs.ver }}
+    steps:
+      - name: Get Latest Opera Proxy Version
+        id: get_ver
+        run: |
+          VER=$(curl -fs -o /dev/null -w %{redirect_url} https://github.com/Snawoot/opera-proxy/releases/latest | cut -d '/' -f8 | sed 's/^v//')
+          echo "ver=$VER" >> $GITHUB_OUTPUT
+          echo "VER=$VER" >> $GITHUB_ENV
+
+      - name: Check if tag exists
+        id: check
+        run: |
+          # Проверяем наличие тега через API GitHub
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            https://api.github.com/repos/${{ github.repository }}/releases/tags/v${{ env.VER }})
+          
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            echo "Релиз v${{ env.VER }} уже существует. Пропускаем сборку."
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
   build-mt7621:
+    needs: check-version
+    if: needs.check-version.outputs.exists == 'false'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -38,6 +67,8 @@ jobs:
           path: sdk/bin/packages/mipsel_24kc/base/opera-proxy_*.ipk
 
   build-arm64:
+    needs: check-version
+    if: needs.check-version.outputs.exists == 'false'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -69,8 +100,9 @@ jobs:
           path: sdk/bin/packages/aarch64_cortex-a53/base/opera-proxy_*.ipk
 
   publish:
+    needs: [check-version, build-mt7621, build-arm64]
+    if: needs.check-version.outputs.exists == 'false'
     runs-on: ubuntu-latest
-    needs: [build-mt7621, build-arm64]
     steps:
       - uses: actions/download-artifact@v4
         with:
