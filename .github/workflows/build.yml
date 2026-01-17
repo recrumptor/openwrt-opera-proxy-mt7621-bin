@@ -1,4 +1,4 @@
-name: Build Opera Proxy for MT7621
+name: Build Opera Proxy
 
 on:
   push:
@@ -6,42 +6,77 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-mt7621:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Download SDK
-      run: |
-        wget https://downloads.openwrt.org/releases/24.10.2/targets/ramips/mt7621/openwrt-sdk-24.10.2-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst
-        tar --use-compress-program=unzstd -xf openwrt-sdk-24.10.2-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst
-        SDK_DIR=$(find . -maxdepth 1 -type d -name "openwrt-sdk-24.10.2-*" | head -n1)
-        mv "$SDK_DIR" sdk
-    - name: Add opera-proxy package
-      run: |
-        cp -r opera-proxy sdk/package/opera-proxy
-        chmod +x sdk/package/opera-proxy/update.sh
-        cd sdk/package/opera-proxy
-        ./update.sh
-    - name: Build .ipk
-      run: |
-        cd sdk
-        make defconfig
-        make package/opera-proxy/compile V=s -j$(nproc)
-    
-    - name: Upload .ipk
-      uses: actions/upload-artifact@v4
-      with:
-        name: opera-proxy
-        path: sdk/bin/packages/mipsel_24kc/base/opera-proxy_*.ipk
-    - name: Publish Release
-      uses: softprops/action-gh-release@v2
-      with:
-        tag_name: v${{ env.VER }}
-        name: "v${{ env.VER }}"
-        files: sdk/bin/packages/mipsel_24kc/base/opera-proxy_*.ipk
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download SDK (MT7621)
+        run: |
+          wget https://downloads.openwrt.org/releases/24.10.2/targets/ramips/mt7621/openwrt-sdk-24.10.2-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+          tar --use-compress-program=unzstd -xf *.tar.zst
+          mv openwrt-sdk-* sdk
 
+      - name: Add opera-proxy package
+        run: |
+          cp -r opera-proxy sdk/package/opera-proxy
+          cd sdk/package/opera-proxy
+          ./update.sh mipsle
+
+      - name: Build .ipk
+        run: |
+          cd sdk
+          make defconfig
+          make package/opera-proxy/compile V=s -j$(nproc)
+
+      - name: Upload MT7621 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opera-proxy-mt7621
+          path: sdk/bin/packages/mipsel_24kc/base/opera-proxy_*.ipk
+
+  build-arm64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download SDK (ARM64)
+        run: |
+          wget https://downloads.openwrt.org/releases/24.10.2/targets/mediatek/filogic/openwrt-sdk-24.10.2-mediatek-filogic_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+          tar --use-compress-program=unzstd -xf *.tar.zst
+          mv openwrt-sdk-* sdk
+
+      - name: Add opera-proxy package
+        run: |
+          cp -r opera-proxy sdk/package/opera-proxy
+          cd sdk/package/opera-proxy
+          ./update.sh arm64
+
+      - name: Build .ipk
+        run: |
+          cd sdk
+          make defconfig
+          make package/opera-proxy/compile V=s -j$(nproc)
+
+      - name: Upload ARM64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opera-proxy-arm64
+          path: sdk/bin/packages/aarch64_cortex-a53/base/opera-proxy_*.ipk
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: [build-mt7621, build-arm64]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VER }}
+          name: "v${{ env.VER }}"
+          files: artifacts/**/*.ipk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
