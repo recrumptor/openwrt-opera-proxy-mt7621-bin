@@ -34,9 +34,7 @@ config instance 'Asia'
   📚 Источник
 Исходный код клиента: [Snawoot/opera-proxy](https://github.com/Snawoot/opera-proxy)
 
-Версия OpenWrt: Сборка выполнена для OpenWrt 24.10.
 
-Сборка выполнена с использованием OpenWrt SDK 24.10.2 для ramips/mt7621
 
 Конфигурация Outbound для Podkop
 ```
