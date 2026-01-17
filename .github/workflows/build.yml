@@ -75,6 +75,14 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
+          
+      - name: Extract Version
+        id: get_version
+        run: |
+          # Выполняем ту же команду, что и в вашем скрипте
+          VER=$(curl -fs -o /dev/null -w %{redirect_url} https://github.com/Snawoot/opera-proxy/releases/latest | cut -d '/' -f8 | sed 's/^v//')
+          echo "VER=$VER" >> $GITHUB_ENV
+          echo "Определена версия: $VER"
 
       - name: Publish Release
         uses: softprops/action-gh-release@v2
