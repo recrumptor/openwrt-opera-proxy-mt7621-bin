@@ -36,3 +36,12 @@ jobs:
       with:
         name: opera-proxy
         path: sdk/bin/packages/mipsel_24kc/base/opera-proxy_*.ipk
+    - name: Publish Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: latest
+        name: "Latest build"
+        files: sdk/bin/packages/mipsel_24kc/base/opera-proxy_*.ipk
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
