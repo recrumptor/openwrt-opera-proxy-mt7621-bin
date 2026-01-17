@@ -2,7 +2,7 @@
 
 # Доступные архитектуры:
 # amd64, arm, arm64, mips, mips64, mips64le, mipsle
-ARCH=mipsle
+ARCH="$1"
 
 # Получить последнюю доступную версию
 VER="$(curl -fs -o /dev/null -w %{redirect_url} https://github.com/Snawoot/opera-proxy/releases/latest | cut -d '/' -f8 | sed 's/^v//')"
