@@ -20,3 +20,4 @@ sed -i "s/^PKG_VERSION:=.*$/PKG_VERSION:=${VER}/" Makefile
 
 echo -e "\n✅ Готово! Теперь можно собрать пакет:"
 echo "make package/opera-proxy/compile V=s"
+echo "VER=$VER" >> $GITHUB_ENV
