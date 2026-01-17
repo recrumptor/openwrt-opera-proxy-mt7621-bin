@@ -14,9 +14,9 @@ jobs:
       - name: Download SDK (MT7621)
         run: |
           wget https://downloads.openwrt.org/releases/24.10.2/targets/ramips/mt7621/openwrt-sdk-24.10.2-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst
-          tar --use-compress-program=unzstd -xf *.tar.zst
           mkdir sdk
-          mv openwrt-sdk-* sdk
+          # Распаковываем с флагом --strip-components=1, чтобы убрать вложенную папку
+          tar --use-compress-program=unzstd -xf *.tar.zst -C sdk --strip-components=1
 
       - name: Add opera-proxy package
         run: |
@@ -44,9 +44,9 @@ jobs:
       - name: Download SDK (ARM64)
         run: |
           wget https://downloads.openwrt.org/releases/24.10.2/targets/mediatek/filogic/openwrt-sdk-24.10.2-mediatek-filogic_gcc-13.3.0_musl.Linux-x86_64.tar.zst
-          tar --use-compress-program=unzstd -xf *.tar.zst
           mkdir sdk
-          mv openwrt-sdk-* sdk
+          # Распаковываем с флагом --strip-components=1, чтобы убрать вложенную папку
+          tar --use-compress-program=unzstd -xf *.tar.zst -C sdk --strip-components=1
 
       - name: Add opera-proxy package
         run: |
