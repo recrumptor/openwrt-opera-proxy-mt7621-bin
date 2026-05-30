@@ -17,7 +17,7 @@ jobs:
       - name: Get Latest Opera Proxy Version
         id: get_ver
         run: |
-          VER=$(curl -fs -o /dev/null -w %{redirect_url} https://github.com/Snawoot/opera-proxy/releases/latest | cut -d '/' -f8 | sed 's/^v//')
+          VER=$(curl -fs -o /dev/null -w %{redirect_url} https://github.com/Alexey71/opera-proxy/releases/latest | cut -d '/' -f8 | sed 's/^v//')
           echo "ver=$VER" >> $GITHUB_OUTPUT
           echo "VER=$VER" >> $GITHUB_ENV
 
