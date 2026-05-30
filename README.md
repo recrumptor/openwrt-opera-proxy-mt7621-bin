@@ -32,7 +32,7 @@ config instance 'Asia'
   Подробнее можно прочитать на странице https://github.com/Alexey71/opera-proxy
 
   📚 Источник
-Исходный код клиента: [Snawoot/opera-proxy](https://github.com/Alexey71/opera-proxy)
+Исходный код клиента: [Alexey71/opera-proxy](https://github.com/Alexey71/opera-proxy)
 
 
 
