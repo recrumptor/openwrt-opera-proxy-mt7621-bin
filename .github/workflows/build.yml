@@ -114,7 +114,7 @@ jobs:
         id: get_version
         run: |
           # Выполняем ту же команду, что и в вашем скрипте
-          VER=$(curl -fs -o /dev/null -w %{redirect_url} https://github.com/Snawoot/opera-proxy/releases/latest | cut -d '/' -f8 | sed 's/^v//')
+          VER=$(curl -fs -o /dev/null -w %{redirect_url} https://github.com/Alexey71/opera-proxy/releases/latest | cut -d '/' -f8 | sed 's/^v//')
           echo "VER=$VER" >> $GITHUB_ENV
           echo "Определена версия: $VER"
 
