@@ -5,12 +5,12 @@
 ARCH="$1"
 
 # Получить последнюю доступную версию
-VER="$(curl -fs -o /dev/null -w %{redirect_url} https://github.com/Snawoot/opera-proxy/releases/latest | cut -d '/' -f8 | sed 's/^v//')"
+VER="$(curl -fs -o /dev/null -w %{redirect_url} https://github.com/Alexey71/opera-proxy/releases/latest | cut -d '/' -f8 | sed 's/^v//')"
 
 echo -e "🚀 Загружаем бинарные файлы Opera Proxy\nВерсия: $VER для архитектуры: $ARCH"
 
 # Скачать бинарник
-curl -LS "https://github.com/Snawoot/opera-proxy/releases/download/v${VER}/opera-proxy.linux-${ARCH}" -o files/usr/bin/opera-proxy
+curl -LS "https://github.com/Alexey71/opera-proxy/releases/download/v${VER}/opera-proxy.linux-${ARCH}" -o files/usr/bin/opera-proxy
 
 # Дать исполняемые права
 chmod +x files/usr/bin/opera-proxy
