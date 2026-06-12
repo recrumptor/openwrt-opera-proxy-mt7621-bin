@@ -5,7 +5,7 @@ on:
     branches: [main]
   workflow_dispatch:
   schedule:
-   - cron: '14 1 * * 0'
+    - cron: '14 1 * * 0'
 
 jobs:
   check-version:
@@ -24,7 +24,6 @@ jobs:
       - name: Check if tag exists
         id: check
         run: |
-          # Проверяем наличие тега через API GitHub
           HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             https://api.github.com/repos/${{ github.repository }}/releases/tags/v${{ env.VER }})
@@ -35,18 +34,20 @@ jobs:
           else
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
-  build-mt7621:
+
+  # --- СБОРКИ ДЛЯ OPENWRT 24.10 (.ipk) ---
+
+  build-mt7621-v24:
     needs: check-version
     if: needs.check-version.outputs.exists == 'false'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - name: Download SDK (MT7621)
+      - name: Download SDK (MT7621 OpenWrt 24)
         run: |
           wget https://downloads.openwrt.org/releases/24.10.2/targets/ramips/mt7621/openwrt-sdk-24.10.2-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst
           mkdir sdk
-          # Распаковываем с флагом --strip-components=1, чтобы убрать вложенную папку
           tar --use-compress-program=unzstd -xf *.tar.zst -C sdk --strip-components=1
 
       - name: Add opera-proxy package
@@ -62,24 +63,23 @@ jobs:
           make defconfig
           make package/opera-proxy/compile V=s -j$(nproc)
 
-      - name: Upload MT7621 artifact
+      - name: Upload MT7621 v24 artifact
         uses: actions/upload-artifact@v4
         with:
-          name: opera-proxy-mt7621
+          name: opera-proxy-mt7621-v24
           path: sdk/bin/packages/mipsel_24kc/base/opera-proxy_*.ipk
 
-  build-arm64:
+  build-arm64-v24:
     needs: check-version
     if: needs.check-version.outputs.exists == 'false'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - name: Download SDK (ARM64)
+      - name: Download SDK (ARM64 OpenWrt 24)
         run: |
           wget https://downloads.openwrt.org/releases/24.10.2/targets/mediatek/filogic/openwrt-sdk-24.10.2-mediatek-filogic_gcc-13.3.0_musl.Linux-x86_64.tar.zst
           mkdir sdk
-          # Распаковываем с флагом --strip-components=1, чтобы убрать вложенную папку
           tar --use-compress-program=unzstd -xf *.tar.zst -C sdk --strip-components=1
 
       - name: Add opera-proxy package
@@ -95,34 +95,103 @@ jobs:
           make defconfig
           make package/opera-proxy/compile V=s -j$(nproc)
 
-      - name: Upload ARM64 artifact
+      - name: Upload ARM64 v24 artifact
         uses: actions/upload-artifact@v4
         with:
-          name: opera-proxy-arm64
+          name: opera-proxy-arm64-v24
           path: sdk/bin/packages/aarch64_cortex-a53/base/opera-proxy_*.ipk
 
-  publish:
-    needs: [check-version, build-mt7621, build-arm64]
+  # --- СБОРКИ ДЛЯ OPENWRT 25.12 (.apk) ---
+
+  build-mt7621-v25:
+    needs: check-version
     if: needs.check-version.outputs.exists == 'false'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v6
+
+      - name: Download SDK (MT7621 OpenWrt 25)
+        run: |
+          wget https://downloads.openwrt.org/releases/25.12.4/targets/ramips/mt7621/openwrt-sdk-25.12.4-ramips-mt7621_gcc-14.3.0_musl.Linux-x86_64.tar.zst
+          mkdir sdk
+          tar --use-compress-program=unzstd -xf *.tar.zst -C sdk --strip-components=1
+
+      - name: Add opera-proxy package
+        run: |
+          cp -r opera-proxy sdk/package/opera-proxy
+          cd sdk/package/opera-proxy
+          chmod +x update.sh
+          ./update.sh mipsle
+
+      - name: Build .apk
+        run: |
+          cd sdk
+          make defconfig
+          make package/opera-proxy/compile V=s -j$(nproc)
+
+      - name: Upload MT7621 v25 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opera-proxy-mt7621-v25
+          path: sdk/bin/packages/mipsel_24kc/base/opera-proxy_*.apk
+
+  build-arm64-v25:
+    needs: check-version
+    if: needs.check-version.outputs.exists == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download SDK (ARM64 OpenWrt 25)
+        run: |
+          wget https://downloads.openwrt.org/releases/25.12.4/targets/mediatek/filogic/openwrt-sdk-25.12.4-mediatek-filogic_gcc-14.3.0_musl.Linux-x86_64.tar.zst
+          mkdir sdk
+          tar --use-compress-program=unzstd -xf *.tar.zst -C sdk --strip-components=1
+
+      - name: Add opera-proxy package
+        run: |
+          cp -r opera-proxy sdk/package/opera-proxy
+          cd sdk/package/opera-proxy
+          chmod +x update.sh
+          ./update.sh arm64
+
+      - name: Build .apk
+        run: |
+          cd sdk
+          make defconfig
+          make package/opera-proxy/compile V=s -j$(nproc)
+
+      - name: Upload ARM64 v25 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opera-proxy-arm64-v25
+          path: sdk/bin/packages/aarch64_cortex-a53/base/opera-proxy_*.apk
+
+  # --- ПУБЛИКАЦИЯ РЕЛИЗА (.ipk + .apk) ---
+
+  publish:
+    needs: [check-version, build-mt7621-v24, build-arm64-v24, build-mt7621-v25, build-arm64-v25]
+    if: needs.check-version.outputs.exists == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v5
         with:
           path: artifacts
           
       - name: Extract Version
         id: get_version
         run: |
-          # Выполняем ту же команду, что и в вашем скрипте
           VER=$(curl -fs -o /dev/null -w %{redirect_url} https://github.com/Alexey71/opera-proxy/releases/latest | cut -d '/' -f8 | sed 's/^v//')
           echo "VER=$VER" >> $GITHUB_ENV
           echo "Определена версия: $VER"
 
       - name: Publish Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ env.VER }}
           name: "v${{ env.VER }}"
-          files: artifacts/**/*.ipk
+          files: |
+            artifacts/**/*.ipk
+            artifacts/**/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
