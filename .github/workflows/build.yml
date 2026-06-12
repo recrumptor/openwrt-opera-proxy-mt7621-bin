@@ -133,7 +133,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: opera-proxy-mt7621-v25
-          path: path: sdk/bin/packages/mipsel_24kc/**/opera-proxy_*.apk
+          path: sdk/bin/packages/mipsel_24kc/**/opera-proxy_*.apk
 
   build-arm64-v25:
     needs: check-version
