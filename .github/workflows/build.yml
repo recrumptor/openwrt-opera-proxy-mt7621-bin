@@ -14,182 +14,144 @@ jobs:
       exists: ${{ steps.check.outputs.exists }}
       ver: ${{ steps.get_ver.outputs.ver }}
     steps:
-      - name: Get Latest Opera Proxy Version
+      - name: Get Latest Version
         id: get_ver
         run: |
+          # Корректно получаем последнюю версию из релизов Alexey71/opera-proxy
           VER=$(curl -fs -o /dev/null -w %{redirect_url} https://github.com/Alexey71/opera-proxy/releases/latest | cut -d '/' -f8 | sed 's/^v//')
+          [ -z "$VER" ] && VER="1.0.0"
           echo "ver=$VER" >> $GITHUB_OUTPUT
           echo "VER=$VER" >> $GITHUB_ENV
 
-      - name: Check if tag exists
+      - name: Check Release
         id: check
         run: |
           HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             https://api.github.com/repos/${{ github.repository }}/releases/tags/v${{ env.VER }})
+          echo "exists=$([ "$HTTP_STATUS" -eq 200 ] && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+
+  build:
+    needs: check-version
+    if: needs.check-version.outputs.exists == 'false'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # --- OPENWRT 24.10 (Формат пакетов: .ipk) ---
+          - openwrt_ver: "24.10"
+            pkg_ext: "ipk"
+            pkg_arch: "mipsel_24kc"
+            goarch: "mipsle"
+            gomips: "softfloat"
+            sdk_url: "https://downloads.openwrt.org/releases/24.10.2/targets/ramips/mt7621/openwrt-sdk-24.10.2-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
+
+          - openwrt_ver: "24.10"
+            pkg_ext: "ipk"
+            pkg_arch: "aarch64_cortex-a53"
+            goarch: "arm64"
+            gomips: ""
+            sdk_url: "https://downloads.openwrt.org/releases/24.10.2/targets/mediatek/filogic/openwrt-sdk-24.10.2-mediatek-filogic_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
+
+          # --- OPENWRT 25.12 (Формат пакетов: .apk) ---
+          - openwrt_ver: "25.12"
+            pkg_ext: "apk"
+            pkg_arch: "mipsel_24kc"
+            goarch: "mipsle"
+            gomips: "softfloat"
+            sdk_url: "https://downloads.openwrt.org/releases/25.12.4/targets/ramips/mt7621/openwrt-sdk-25.12.4-ramips-mt7621_gcc-14.3.0_musl.Linux-x86_64.tar.zst"
+
+          - openwrt_ver: "25.12"
+            pkg_ext: "apk"
+            pkg_arch: "aarch64_cortex-a53"
+            goarch: "arm64"
+            gomips: ""
+            sdk_url: "https://downloads.openwrt.org/releases/25.12.4/targets/mediatek/filogic/openwrt-sdk-25.12.4-mediatek-filogic_gcc-14.3.0_musl.Linux-x86_64.tar.zst"
+
+    steps:
+      # Клонируем НАШ собственный репозиторий, где лежат папка opera-proxy и Makefile
+      - uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+
+      - name: Compile Opera Proxy Binary
+        run: |
+          # Клонируем ПРАВИЛЬНЫЙ репозиторий с исходным кодом прокси
+          git clone https://github.com/Alexey71/opera-proxy.git source
+          cd source
+          # Собираем бинарник под целевую архитектуру роутера
+          GOOS=linux GOARCH=${{ matrix.goarch }} GOMIPS=${{ matrix.gomips }} go build -ldflags="-s -w" -o ../opera-proxy-bin
+          cd ..
+
+      - name: Install dependencies
+        run: sudo apt update && sudo apt install -y libncurses5-dev zstd
+
+      - name: Setup SDK
+        run: |
+          wget -O sdk.tar.zst ${{ matrix.sdk_url }}
+          mkdir sdk
+          tar --use-compress-program=unzstd -xf sdk.tar.zst -C sdk --strip-components=1
+
+      - name: Prepare Package
+        run: |
+          # Копируем скомпилированный нами Go-бинарник в структуру пакета
+          mkdir -p opera-proxy/files/usr/bin
+          cp opera-proxy-bin opera-proxy/files/usr/bin/opera-proxy
+          chmod +x opera-proxy/files/usr/bin/opera-proxy
           
-          if [ "$HTTP_STATUS" -eq 200 ]; then
-            echo "Релиз v${{ env.VER }} уже существует. Пропускаем сборку."
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
+          # Прописываем актуальную версию в Makefile пакета
+          VER="${{ needs.check-version.outputs.ver }}"
+          [ -z "$VER" ] || [ "$VER" = "null" ] && VER="1.0.0"
+          sed -i "s/^PKG_VERSION:=.*$/PKG_VERSION:=$VER/" opera-proxy/Makefile
+          
+          # Закидываем готовый пакет в SDK
+          cp -r opera-proxy sdk/package/
+
+      - name: Compile Package
+        run: |
+          cd sdk
+          make oldconfig || make defconfig
+          # Фиды необходимы OpenWrt 25 для успешной генерации индексов APK
+          ./scripts/feeds update base
+          ./scripts/feeds install -a
+          echo "CONFIG_PACKAGE_opera-proxy=y" >> .config
+          make defconfig
+          make package/opera-proxy/compile V=s -j$(nproc)
+          
+          echo "=== Поиск и копирование готового пакета ==="
+          mkdir -p ../output-artifacts
+          # Ищет .ipk или .apk в зависимости от итерации матрицы
+          find bin/ -name "opera-proxy*.${{ matrix.pkg_ext }}" -exec cp {} ../output-artifacts/opera-proxy-${{ matrix.pkg_arch }}-v${{ matrix.openwrt_ver }}.${{ matrix.pkg_ext }} \;
+          
+          if [ -z "$(ls -A ../output-artifacts/)" ]; then
+            echo "Файл пакета не найден после компиляции!"
+            exit 1
           fi
 
-  # --- СБОРКИ ДЛЯ OPENWRT 24.10 (.ipk) ---
-
-  build-mt7621-v24:
-    needs: check-version
-    if: needs.check-version.outputs.exists == 'false'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Download SDK (MT7621 OpenWrt 24)
-        run: |
-          wget https://downloads.openwrt.org/releases/24.10.2/targets/ramips/mt7621/openwrt-sdk-24.10.2-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst
-          mkdir sdk
-          tar --use-compress-program=unzstd -xf *.tar.zst -C sdk --strip-components=1
-
-      - name: Add opera-proxy package
-        run: |
-          cp -r opera-proxy sdk/package/opera-proxy
-          cd sdk/package/opera-proxy
-          chmod +x update.sh
-          ./update.sh mipsle
-
-      - name: Build .ipk
-        run: |
-          cd sdk
-          make defconfig
-          make package/opera-proxy/compile V=s -j$(nproc)
-
-      - name: Upload MT7621 v24 artifact
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: opera-proxy-mt7621-v24
-          path: sdk/bin/packages/mipsel_24kc/base/opera-proxy_*.ipk
-
-  build-arm64-v24:
-    needs: check-version
-    if: needs.check-version.outputs.exists == 'false'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Download SDK (ARM64 OpenWrt 24)
-        run: |
-          wget https://downloads.openwrt.org/releases/24.10.2/targets/mediatek/filogic/openwrt-sdk-24.10.2-mediatek-filogic_gcc-13.3.0_musl.Linux-x86_64.tar.zst
-          mkdir sdk
-          tar --use-compress-program=unzstd -xf *.tar.zst -C sdk --strip-components=1
-
-      - name: Add opera-proxy package
-        run: |
-          cp -r opera-proxy sdk/package/opera-proxy
-          cd sdk/package/opera-proxy
-          chmod +x update.sh
-          ./update.sh arm64
-
-      - name: Build .ipk
-        run: |
-          cd sdk
-          make defconfig
-          make package/opera-proxy/compile V=s -j$(nproc)
-
-      - name: Upload ARM64 v24 artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: opera-proxy-arm64-v24
-          path: sdk/bin/packages/aarch64_cortex-a53/base/opera-proxy_*.ipk
-
-  # --- СБОРКИ ДЛЯ OPENWRT 25.12 (.apk) ---
-
-  build-mt7621-v25:
-    needs: check-version
-    if: needs.check-version.outputs.exists == 'false'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Download SDK (MT7621 OpenWrt 25)
-        run: |
-          wget https://downloads.openwrt.org/releases/25.12.4/targets/ramips/mt7621/openwrt-sdk-25.12.4-ramips-mt7621_gcc-14.3.0_musl.Linux-x86_64.tar.zst
-          mkdir sdk
-          tar --use-compress-program=unzstd -xf *.tar.zst -C sdk --strip-components=1
-
-      - name: Add opera-proxy package
-        run: |
-          cp -r opera-proxy sdk/package/opera-proxy
-          cd sdk/package/opera-proxy
-          chmod +x update.sh
-          ./update.sh mipsle
-
-      - name: Build .apk
-        run: |
-          cd sdk
-          make defconfig
-          make package/opera-proxy/compile V=s -j$(nproc)
-
-      - name: Upload MT7621 v25 artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: opera-proxy-mt7621-v25
-          path: sdk/bin/packages/mipsel_24kc/**/opera-proxy_*.apk
-
-  build-arm64-v25:
-    needs: check-version
-    if: needs.check-version.outputs.exists == 'false'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Download SDK (ARM64 OpenWrt 25)
-        run: |
-          wget https://downloads.openwrt.org/releases/25.12.4/targets/mediatek/filogic/openwrt-sdk-25.12.4-mediatek-filogic_gcc-14.3.0_musl.Linux-x86_64.tar.zst
-          mkdir sdk
-          tar --use-compress-program=unzstd -xf *.tar.zst -C sdk --strip-components=1
-
-      - name: Add opera-proxy package
-        run: |
-          cp -r opera-proxy sdk/package/opera-proxy
-          cd sdk/package/opera-proxy
-          chmod +x update.sh
-          ./update.sh arm64
-
-      - name: Build .apk
-        run: |
-          cd sdk
-          make defconfig
-          make package/opera-proxy/compile V=s -j$(nproc)
-
-      - name: Upload ARM64 v25 artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: opera-proxy-arm64-v25
-          path: sdk/bin/packages/aarch64_cortex-a53/**/opera-proxy_*.apk
-
-  # --- ПУБЛИКАЦИЯ РЕЛИЗА (.ipk + .apk) ---
+          name: opera-proxy-${{ matrix.pkg_arch }}-v${{ matrix.openwrt_ver }}
+          path: output-artifacts/
+          if-no-files-found: error
 
   publish:
-    needs: [check-version, build-mt7621-v24, build-arm64-v24, build-mt7621-v25, build-arm64-v25]
-    if: needs.check-version.outputs.exists == 'false'
+    needs: [check-version, build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v5
         with:
           path: artifacts
           
-      - name: Extract Version
-        id: get_version
-        run: |
-          VER=$(curl -fs -o /dev/null -w %{redirect_url} https://github.com/Alexey71/opera-proxy/releases/latest | cut -d '/' -f8 | sed 's/^v//')
-          echo "VER=$VER" >> $GITHUB_ENV
-          echo "Определена версия: $VER"
-
       - name: Publish Release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: v${{ env.VER }}
-          name: "v${{ env.VER }}"
+          tag_name: v${{ needs.check-version.outputs.ver }}
+          name: "v${{ needs.check-version.outputs.ver }}"
           files: |
             artifacts/**/*.ipk
             artifacts/**/*.apk
