@@ -133,7 +133,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: opera-proxy-mt7621-v25
-          path: sdk/bin/packages/mipsel_24kc/base/opera-proxy_*.apk
+          path: path: sdk/bin/packages/mipsel_24kc/**/opera-proxy_*.apk
 
   build-arm64-v25:
     needs: check-version
@@ -165,7 +165,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: opera-proxy-arm64-v25
-          path: sdk/bin/packages/aarch64_cortex-a53/base/opera-proxy_*.apk
+          path: sdk/bin/packages/aarch64_cortex-a53/**/opera-proxy_*.apk
 
   # --- ПУБЛИКАЦИЯ РЕЛИЗА (.ipk + .apk) ---
 
