@@ -5,7 +5,7 @@ on:
     branches: [main]
   workflow_dispatch:
   schedule:
-    - cron: '14 1 * * 0'
+    - cron: '14 1 * * 5'
 
 jobs:
   check-version:
